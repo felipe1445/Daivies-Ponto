@@ -1,6 +1,6 @@
 aiosqlite==0.20.0
 Flask==3.0.3
-discord=2.3.2
+discord==2.3.2
 discord.py==2.5.2
 aiosqlite==0.20.0
 audioop-lts; python_version >= "3.13"
