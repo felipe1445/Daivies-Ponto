@@ -380,7 +380,6 @@ async def clear_user_report(ctx, user: discord.Member):
 # Painel interativo (botões sem modal, mensagens PÚBLICAS)
 # ======================================
 class TimePanel(discord.ui.View):
-    # View persistente precisa timeout=None
     def __init__(self):
         super().__init__(timeout=None)
 
@@ -391,6 +390,8 @@ class TimePanel(discord.ui.View):
         custom_id="timepanel:entrada"
     )
     async def btn_entrada(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Responde rápido para não expirar
+        await interaction.response.defer(ephemeral=False)
         await _handle_entrada_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
@@ -400,6 +401,7 @@ class TimePanel(discord.ui.View):
         custom_id="timepanel:saida"
     )
     async def btn_saida(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=False)
         await _handle_saida_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
@@ -409,6 +411,7 @@ class TimePanel(discord.ui.View):
         custom_id="timepanel:pausa"
     )
     async def btn_pausar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=False)
         await _handle_pausa_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
@@ -418,6 +421,7 @@ class TimePanel(discord.ui.View):
         custom_id="timepanel:retorno"
     )
     async def btn_retomar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=False)
         await _handle_retorno_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
@@ -427,17 +431,18 @@ class TimePanel(discord.ui.View):
         custom_id="timepanel:relatorio"
     )
     async def btn_relatorio(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Defer primeiro para "reservar" a resposta
+        await interaction.response.defer(ephemeral=False)
         async with aiosqlite.connect(DB_PATH) as db:
             entries = await _fetch_entries(db, interaction.user.id, 7)
         if not entries:
-            await interaction.response.send_message(
-                embed=_make_warning_embed("Sem registros", f"{interaction.user.mention} Nenhum registro encontrado nos últimos 7 dias."),
-                ephemeral=False
+            await interaction.followup.send(
+                embed=_make_warning_embed("Sem registros", f"{interaction.user.mention} Nenhum registro encontrado nos últimos 7 dias.")
             )
             return
         fields, period_seconds = _build_daily_fields(entries)
         embeds = _make_report_embeds(interaction.user, 7, fields, period_seconds)
-        await interaction.response.send_message(embeds=embeds, ephemeral=False)
+        await interaction.followup.send(embeds=embeds)
 
 
 @bot.command(name='painel')
