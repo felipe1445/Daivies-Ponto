@@ -253,7 +253,7 @@ def _build_daily_fields(
                 day_lines.append(f"🔴 Saída     {bt.strftime('%H:%M:%S')}")
                 if pause_total > 0:
                     day_lines.append(f"⏳ Pausas    {_fmt_duration_seconds(pause_total)} (descontadas)")
-                day_lines.append(f"⏱ Duração   {_fmt_duration_seconds(worked)}")
+                day_lines.append(f"🕒 Duração   {_fmt_duration_seconds(worked)}")
 
                 entry_open_time = None
             else:
