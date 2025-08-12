@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import discord
 from discord.ext import commands
@@ -13,7 +14,7 @@ from typing import List, Tuple, Optional
 # ======================================
 BRAZIL_TZ = timezone(timedelta(hours=-3))
 
-GUILD_IDS = [1404325825599246346]
+GUILD_IDS = [1404325825599246346]  # ajuste conforme seu(s) servidor(es)
 
 # Bot setup
 intents = discord.Intents.default()
@@ -74,45 +75,46 @@ def _fmt_hora_br(dt: datetime) -> str:
 
 
 def _fmt_dia_label(dt: datetime) -> str:
-    # Mapeamento dos dias da semana para portugues
+    # Abreviações em pt-BR
     dias_semana = {
         'Monday': 'Seg',
-        'Tuesday': 'Ter', 
+        'Tuesday': 'Ter',
         'Wednesday': 'Qua',
         'Thursday': 'Qui',
         'Friday': 'Sex',
-        'Saturday': 'Sab',
-        'Sunday': 'Dom'
+        'Saturday': 'Sáb',
+        'Sunday': 'Dom',
     }
-    
     dt_br = dt.astimezone(BRAZIL_TZ)
-    dia_en = dt_br.strftime('%A')  # Nome do dia em inglas
-    dia_pt = dias_semana.get(dia_en, dia_en[:3])  # Converte para portuguas
+    dia_en = dt_br.strftime('%A')
+    dia_pt = dias_semana.get(dia_en, dia_en[:3])
     return dt_br.strftime(f'%d/%m/%Y ({dia_pt})')
 
 
-def _make_clock_embed(action: str,
-                      member: discord.Member,
-                      when: datetime,
-                      color: int,
-                      mention: str,
-                      hint: str = None,
-                      notes: Optional[str] = None) -> discord.Embed:
+def _make_clock_embed(
+    action: str,
+    member: discord.Member,
+    when: datetime,
+    color: int,
+    mention: str,
+    hint: str = None,
+    notes: Optional[str] = None
+) -> discord.Embed:
     emoji = {
-        'entrada': '??',
-        'saida': '??',
-        'pausa': '??',
-        'retorno': '??'
-    }.get(action.lower(), '?')
+        'entrada': '🟢',
+        'saida': '🔴',
+        'pausa': '⏸️',
+        'retorno': '▶️',
+    }.get(action.lower(), '🕒')
     action_title = action.capitalize()
     nick = _user_nick(member)
-    embed = discord.Embed(title=f'{emoji} {action_title} registrada',
-                          description=f'{mention} (**{nick}**)',
-                          color=color,
-                          timestamp=when)
-    embed.add_field(name='Horario (GMT-3)',
-                    value=f'`{_fmt_hora_br(when)}`',
-                    inline=True)
+    embed = discord.Embed(
+        title=f'{emoji} {action_title} registrada',
+        description=f'{mention} (**{nick}**)',
+        color=color,
+        timestamp=when
+    )
+    embed.add_field(name='Horário (GMT-3)', value=f'`{_fmt_hora_br(when)}`', inline=True)
     if notes:
         embed.add_field(name='Notas', value=notes[:1024], inline=False)
     embed.set_author(name=nick, icon_url=_user_avatar(member))
@@ -121,28 +123,23 @@ def _make_clock_embed(action: str,
     return embed
 
 
-def _make_warning_embed(title: str,
-                        message: str,
-                        mention: Optional[str] = None) -> discord.Embed:
+def _make_warning_embed(title: str, message: str, mention: Optional[str] = None) -> discord.Embed:
     desc = f'{mention} {message}' if mention else message
-    return discord.Embed(title=f'?? {title}', description=desc, color=0xF1C40F)
+    return discord.Embed(title=f'⚠️ {title}', description=desc, color=0xF1C40F)
 
 
-def _make_danger_embed(title: str,
-                       message: str,
-                       icon_url: Optional[str] = None) -> discord.Embed:
-    e = discord.Embed(title=f'??? {title}', description=message, color=0xE74C3C)
+def _make_danger_embed(title: str, message: str, icon_url: Optional[str] = None) -> discord.Embed:
+    e = discord.Embed(title=f'🗑️ {title}', description=message, color=0xE74C3C)
     if icon_url:
         e.set_thumbnail(url=icon_url)
     return e
 
 
 # ======================================
-# Parsing de datas e calculo de duracao (com pausas)
+# Parsing de datas e cálculo de duração (com pausas)
 # ======================================
 def _parse_timestamp_to_brazil_tz(ts: str) -> datetime:
-    for fmt in ('%Y-%m-%d %H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S.%f',
-                '%Y-%m-%d %H:%M:%S'):
+    for fmt in ('%Y-%m-%d %H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S'):
         try:
             dt = datetime.strptime(ts, fmt)
             if dt.tzinfo is None:
@@ -160,8 +157,7 @@ def _fmt_duration_seconds(total_seconds: float) -> str:
     return f'{hours}h {minutes}min'
 
 
-async def _fetch_entries(db, user_id: int,
-                         dias: int) -> List[Tuple[str, str, Optional[str]]]:
+async def _fetch_entries(db, user_id: int, dias: int) -> List[Tuple[str, str, Optional[str]]]:
     cursor = await db.execute(
         '''
         SELECT entry_type, timestamp, notes
@@ -174,7 +170,7 @@ async def _fetch_entries(db, user_id: int,
 
 
 # ======================================
-# Lagica de relatario (agrupar por dia e descontar pausas)
+# Lógica de relatório (agrupar por dia e descontar pausas)
 # ======================================
 def _build_daily_fields(
     entries: List[Tuple[str, str, Optional[str]]]
@@ -192,9 +188,8 @@ def _build_daily_fields(
         if current_day_label is None:
             return
         subtotal = _fmt_duration_seconds(day_seconds)
-        value = "```\n" + "\n".join(day_lines) + (
-            "\n" if day_lines else "") + f"Subtotal: {subtotal}\n```"
-        fields.append((f"?? {current_day_label}", value))
+        value = "```\n" + "\n".join(day_lines) + ("\n" if day_lines else "") + f"Subtotal: {subtotal}\n```"
+        fields.append((f"📆 {current_day_label}", value))
         day_seconds = 0
         day_lines = []
 
@@ -210,34 +205,28 @@ def _build_daily_fields(
 
         if entry_type == 'entrada':
             entry_open_time = bt
-            day_lines.append(f"?? Entrada   {bt.strftime('%H:%M:%S')}")
-            if notes: day_lines.append(f"   ? notas: {notes}")
+            day_lines.append(f"🟢 Entrada   {bt.strftime('%H:%M:%S')}")
+            if notes: day_lines.append(f"   └ notas: {notes}")
         elif entry_type == 'pausa':
             if entry_open_time and not paused_from:
                 paused_from = bt
-                day_lines.append(f"?? Pausa     {bt.strftime('%H:%M:%S')}")
-                if notes: day_lines.append(f"   ? notas: {notes}")
+                day_lines.append(f"⏸️ Pausa     {bt.strftime('%H:%M:%S')}")
+                if notes: day_lines.append(f"   └ notas: {notes}")
             else:
-                day_lines.append(
-                    f"?? Pausa     {bt.strftime('%H:%M:%S')} (sem entrada ativa)"
-                )
+                day_lines.append(f"⚠️ Pausa     {bt.strftime('%H:%M:%S')} (sem entrada ativa)")
         elif entry_type == 'retorno':
             if entry_open_time and paused_from:
                 pause_seconds = (bt - paused_from).total_seconds()
-                day_lines.append(
-                    f"?? Retorno   {bt.strftime('%H:%M:%S')}  (pausa: {_fmt_duration_seconds(pause_seconds)})"
-                )
-                if notes: day_lines.append(f"   ? notas: {notes}")
+                day_lines.append(f"▶️ Retorno   {bt.strftime('%H:%M:%S')}  (pausa: {_fmt_duration_seconds(pause_seconds)})")
+                if notes: day_lines.append(f"   └ notas: {notes}")
                 paused_from = None
             else:
-                day_lines.append(
-                    f"?? Retorno   {bt.strftime('%H:%M:%S')} (sem pausa aberta)"
-                )
+                day_lines.append(f"⚠️ Retorno   {bt.strftime('%H:%M:%S')} (sem pausa aberta)")
         elif entry_type == 'saida':
             if entry_open_time:
                 raw_seconds = (bt - entry_open_time).total_seconds()
 
-                # Recontar pausas fechadas entre entrada e saada
+                # Recontar pausas fechadas entre entrada e saída
                 pause_total = 0
                 start = entry_open_time
                 end = bt
@@ -261,31 +250,25 @@ def _build_daily_fields(
                 day_seconds += worked
                 period_seconds += worked
 
-                day_lines.append(f"?? Saada     {bt.strftime('%H:%M:%S')}")
+                day_lines.append(f"🔴 Saída     {bt.strftime('%H:%M:%S')}")
                 if pause_total > 0:
-                    day_lines.append(
-                        f"? Pausas    {_fmt_duration_seconds(pause_total)} (descontadas)"
-                    )
-                day_lines.append(
-                    f"?? Duraaao   {_fmt_duration_seconds(worked)}")
+                    day_lines.append(f"⏳ Pausas    {_fmt_duration_seconds(pause_total)} (descontadas)")
+                day_lines.append(f"⏱ Duração   {_fmt_duration_seconds(worked)}")
 
                 entry_open_time = None
             else:
-                day_lines.append(
-                    f"?? Saada     {bt.strftime('%H:%M:%S')} (sem entrada)")
+                day_lines.append(f"⚠️ Saída     {bt.strftime('%H:%M:%S')} (sem entrada)")
         else:
-            day_lines.append(f"? {entry_type}   {bt.strftime('%H:%M:%S')}")
+            day_lines.append(f"❔ {entry_type}   {bt.strftime('%H:%M:%S')}")
 
     if entry_open_time:
-        day_lines.append(
-            "?? Registro em aberto: altima entrada nao possui saada.")
+        day_lines.append("⚠️ Registro em aberto: última entrada não possui saída.")
     flush_day()
 
     return fields, period_seconds
 
 
-def _chunk_fields(fields: List[Tuple[str, str]],
-                  per_embed: int = 5) -> List[List[Tuple[str, str]]]:
+def _chunk_fields(fields: List[Tuple[str, str]], per_embed: int = 5) -> List[List[Tuple[str, str]]]:
     chunks = []
     for i in range(0, len(fields), per_embed):
         chunks.append(fields[i:i + per_embed])
@@ -299,10 +282,10 @@ def _make_report_embeds(target: discord.Member, dias: int,
     target_mention = target.mention
 
     header = discord.Embed(
-        title="?? Seu Relatario de Ponto",
-        description=
-        f"{target_mention} **{target_nick}**\nPeraodo: altimos **{dias}** dias",
-        color=0x3498DB)
+        title="📅 Seu Relatório de Ponto",
+        description=f"{target_mention} **{target_nick}**\nPeríodo: últimos **{dias}** dias",
+        color=0x3498DB
+    )
     header.set_thumbnail(url=_user_avatar(target))
     header.set_author(name=target_nick, icon_url=_user_avatar(target))
     embeds = [header]
@@ -314,9 +297,11 @@ def _make_report_embeds(target: discord.Member, dias: int,
         embeds.append(e)
 
     total_fmt = _fmt_duration_seconds(period_seconds)
-    footer = discord.Embed(title="?? Resumo do Peraodo",
-                           description=f"**Total trabalhado:** `{total_fmt}`",
-                           color=0x2C3E50)
+    footer = discord.Embed(
+        title="📊 Resumo do Período",
+        description=f"**Total trabalhado:** `{total_fmt}`",
+        color=0x2C3E50
+    )
     embeds.append(footer)
     return embeds
 
@@ -352,7 +337,7 @@ async def report(ctx, dias: int = 7):
     if not entries:
         await ctx.send(embed=_make_warning_embed(
             "Sem registros",
-            f"{ctx.author.mention} Nenhum registro encontrado nos altimos {dias} dias."
+            f"{ctx.author.mention} Nenhum registro encontrado nos últimos {dias} dias."
         ))
         return
 
@@ -365,37 +350,34 @@ async def report(ctx, dias: int = 7):
 @bot.command(name='limpar')
 async def clear_user_report(ctx, user: discord.Member):
     async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            'SELECT COUNT(*) FROM time_entries WHERE user_id = ?', (user.id, ))
+        cursor = await db.execute('SELECT COUNT(*) FROM time_entries WHERE user_id = ?', (user.id,))
         count = await cursor.fetchone()
         total = count[0] if count else 0
 
         if total == 0:
             await ctx.send(embed=_make_warning_embed(
                 "Nada para limpar",
-                f"{user.mention} (**{_user_nick(user)}**) nao possui registros."
+                f"{user.mention} (**{_user_nick(user)}**) não possui registros."
             ))
             return
 
-        await db.execute('DELETE FROM time_entries WHERE user_id = ?',
-                         (user.id, ))
+        await db.execute('DELETE FROM time_entries WHERE user_id = ?', (user.id,))
         await db.commit()
 
         msg = (
-            f"**Usuario:** {user.mention} (**{_user_nick(user)}**)\n"
-            f"**Aaao:** Registros removidos\n"
+            f"**Usuário:** {user.mention} (**{_user_nick(user)}**)\n"
+            f"**Ação:** Registros removidos\n"
             f"**Quantidade:** `{total}`\n"
             f"**Por:** {ctx.author.mention} (**{_user_nick(ctx.author)}**)\n"
-            f"**Quando:** `{_fmt_hora_br(datetime.now(BRAZIL_TZ))}`")
-        e = _make_danger_embed("Registros de ponto limpos",
-                               msg,
-                               icon_url=_user_avatar(user))
-        e.set_footer(text="Atenaao: esta aaao a irreversavel.")
+            f"**Quando:** `{_fmt_hora_br(datetime.now(BRAZIL_TZ))}`"
+        )
+        e = _make_danger_embed("Registros de ponto limpos", msg, icon_url=_user_avatar(user))
+        e.set_footer(text="Atenção: esta ação é irreversível.")
         await ctx.send(embed=e)
 
 
 # ======================================
-# Painel interativo (botaes sem modal, mensagens PaBLICAS)
+# Painel interativo (botões sem modal, mensagens PÚBLICAS)
 # ======================================
 class TimePanel(discord.ui.View):
     # View persistente precisa timeout=None
@@ -405,88 +387,82 @@ class TimePanel(discord.ui.View):
     @discord.ui.button(
         label="Entrada",
         style=discord.ButtonStyle.success,
-        emoji="??",
-        custom_id="timepanel:entrada"  # <?? custom_id estavel
+        emoji="🟢",
+        custom_id="timepanel:entrada"
     )
-    async def btn_entrada(self, interaction: discord.Interaction,
-                          button: discord.ui.Button):
+    async def btn_entrada(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _handle_entrada_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
-        label="Saada",
+        label="Saída",
         style=discord.ButtonStyle.danger,
-        emoji="??",
-        custom_id="timepanel:saida"  # <?? custom_id estavel
+        emoji="🔴",
+        custom_id="timepanel:saida"
     )
-    async def btn_saida(self, interaction: discord.Interaction,
-                        button: discord.ui.Button):
+    async def btn_saida(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _handle_saida_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
         label="Pausar",
         style=discord.ButtonStyle.secondary,
-        emoji="??",
-        custom_id="timepanel:pausa"  # <?? custom_id estavel
+        emoji="⏸️",
+        custom_id="timepanel:pausa"
     )
-    async def btn_pausar(self, interaction: discord.Interaction,
-                         button: discord.ui.Button):
+    async def btn_pausar(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _handle_pausa_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
         label="Retomar",
         style=discord.ButtonStyle.primary,
-        emoji="??",
-        custom_id="timepanel:retorno"  # <?? custom_id estavel
+        emoji="▶️",
+        custom_id="timepanel:retorno"
     )
-    async def btn_retomar(self, interaction: discord.Interaction,
-                          button: discord.ui.Button):
+    async def btn_retomar(self, interaction: discord.Interaction, button: discord.ui.Button):
         await _handle_retorno_ctx_public(interaction, notes=None)
 
     @discord.ui.button(
-        label="Relatario (7 dias)",
+        label="Relatório (7 dias)",
         style=discord.ButtonStyle.primary,
-        emoji="??",
-        custom_id="timepanel:relatorio"  # <?? custom_id estavel
+        emoji="⏰",
+        custom_id="timepanel:relatorio"
     )
-    async def btn_relatorio(self, interaction: discord.Interaction,
-                            button: discord.ui.Button):
+    async def btn_relatorio(self, interaction: discord.Interaction, button: discord.ui.Button):
         async with aiosqlite.connect(DB_PATH) as db:
             entries = await _fetch_entries(db, interaction.user.id, 7)
         if not entries:
-            await interaction.response.send_message(embed=_make_warning_embed(
-                "Sem registros",
-                f"{interaction.user.mention} Nenhum registro encontrado nos altimos 7 dias."
-            ),
-                                                    ephemeral=False)
+            await interaction.response.send_message(
+                embed=_make_warning_embed("Sem registros", f"{interaction.user.mention} Nenhum registro encontrado nos últimos 7 dias."),
+                ephemeral=False
+            )
             return
         fields, period_seconds = _build_daily_fields(entries)
-        embeds = _make_report_embeds(interaction.user, 7, fields,
-                                     period_seconds)
+        embeds = _make_report_embeds(interaction.user, 7, fields, period_seconds)
         await interaction.response.send_message(embeds=embeds, ephemeral=False)
 
 
 @bot.command(name='painel')
 async def painel(ctx):
-    """Envia o painel interativo com botaes."""
+    """Envia o painel interativo com botões."""
     view = TimePanel()
-    await ctx.send("?? **Painel de Ponto** a use os botaes abaixo:", view=view)
+    await ctx.send("🧭 **Painel de Ponto** — use os botões abaixo:", view=view)
 
 
 # ======================================
-# Implementaaaes das aaaes (compartilhadas)
+# Implementações das ações (compartilhadas)
 # ======================================
 async def _handle_entrada(ctx, notes: Optional[str]):
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             'SELECT entry_type FROM time_entries WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1',
-            (ctx.author.id, ))
+            (ctx.author.id,))
         last = await cursor.fetchone()
 
         if last and last[0] == 'entrada':
             await ctx.send(embed=_make_warning_embed(
-                'Entrada ja registrada',
-                'voca ja registrou **entrada**. Use `!saida` quando encerrar as atividades.',
-                ctx.author.mention))
+                'Entrada já registrada',
+                'você já registrou **entrada**. Use `!saida` quando encerrar as atividades.',
+                ctx.author.mention
+            ))
             return
 
         now = datetime.now(BRAZIL_TZ)
@@ -495,28 +471,25 @@ async def _handle_entrada(ctx, notes: Optional[str]):
             (ctx.author.id, 'entrada', now, notes))
         await db.commit()
 
-        await ctx.send(
-            embed=_make_clock_embed('entrada',
-                                    ctx.author,
-                                    now,
-                                    0x2ECC71,
-                                    ctx.author.mention,
-                                    hint='Use !saida quando terminar.',
-                                    notes=notes))
+        await ctx.send(embed=_make_clock_embed(
+            'entrada', ctx.author, now, 0x2ECC71, ctx.author.mention,
+            hint='Use !saida quando terminar.', notes=notes
+        ))
 
 
 async def _handle_saida(ctx, notes: Optional[str]):
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             'SELECT entry_type FROM time_entries WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1',
-            (ctx.author.id, ))
+            (ctx.author.id,))
         last = await cursor.fetchone()
 
         if not last or last[0] == 'saida':
             await ctx.send(embed=_make_warning_embed(
-                'Entrada necessaria',
-                'voca precisa registrar **entrada** primeiro. Use `!entrada` para comeaar.',
-                ctx.author.mention))
+                'Entrada necessária',
+                'você precisa registrar **entrada** primeiro. Use `!entrada` para começar.',
+                ctx.author.mention
+            ))
             return
 
         now = datetime.now(BRAZIL_TZ)
@@ -525,27 +498,25 @@ async def _handle_saida(ctx, notes: Optional[str]):
             (ctx.author.id, 'saida', now, notes))
         await db.commit()
 
-        await ctx.send(embed=_make_clock_embed('saida',
-                                               ctx.author,
-                                               now,
-                                               0xE74C3C,
-                                               ctx.author.mention,
-                                               hint='Bom descanso! ?',
-                                               notes=notes))
+        await ctx.send(embed=_make_clock_embed(
+            'saida', ctx.author, now, 0xE74C3C, ctx.author.mention,
+            hint='Bom descanso! ✨', notes=notes
+        ))
 
 
 async def _handle_pausa(ctx, notes: Optional[str]):
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             'SELECT entry_type, timestamp FROM time_entries WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1',
-            (ctx.author.id, ))
+            (ctx.author.id,))
         last = await cursor.fetchone()
 
         if not last or last[0] not in ('entrada', 'retorno'):
             await ctx.send(embed=_make_warning_embed(
-                'Nao a possavel pausar',
-                'Voca precisa estar **em jornada ativa** (apas `!entrada` ou `Retomar`) para pausar.',
-                ctx.author.mention))
+                'Não é possível pausar',
+                'Você precisa estar **em jornada ativa** (após `!entrada` ou `Retomar`) para pausar.',
+                ctx.author.mention
+            ))
             return
 
         now = datetime.now(BRAZIL_TZ)
@@ -554,13 +525,10 @@ async def _handle_pausa(ctx, notes: Optional[str]):
             (ctx.author.id, 'pausa', now, notes))
         await db.commit()
 
-        await ctx.send(embed=_make_clock_embed('pausa',
-                                               ctx.author,
-                                               now,
-                                               0x95A5A6,
-                                               ctx.author.mention,
-                                               hint='Use Retomar para voltar.',
-                                               notes=notes))
+        await ctx.send(embed=_make_clock_embed(
+            'pausa', ctx.author, now, 0x95A5A6, ctx.author.mention,
+            hint='Use Retomar para voltar.', notes=notes
+        ))
 
 
 async def _handle_retorno(ctx, notes: Optional[str]):
@@ -569,14 +537,15 @@ async def _handle_retorno(ctx, notes: Optional[str]):
             '''
             SELECT entry_type, timestamp FROM time_entries
             WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1
-            ''', (ctx.author.id, ))
+            ''', (ctx.author.id,))
         last = await cursor.fetchone()
 
         if not last or last[0] != 'pausa':
             await ctx.send(embed=_make_warning_embed(
-                'Nao a possavel retomar',
-                'Voca precisa estar **pausado** para retomar.',
-                ctx.author.mention))
+                'Não é possível retomar',
+                'Você precisa estar **pausado** para retomar.',
+                ctx.author.mention
+            ))
             return
 
         now = datetime.now(BRAZIL_TZ)
@@ -585,127 +554,94 @@ async def _handle_retorno(ctx, notes: Optional[str]):
             (ctx.author.id, 'retorno', now, notes))
         await db.commit()
 
-        await ctx.send(embed=_make_clock_embed('retorno',
-                                               ctx.author,
-                                               now,
-                                               0x1ABC9C,
-                                               ctx.author.mention,
-                                               hint='Jornada ativa.',
-                                               notes=notes))
+        await ctx.send(embed=_make_clock_embed(
+            'retorno', ctx.author, now, 0x1ABC9C, ctx.author.mention,
+            hint='Jornada ativa.', notes=notes
+        ))
 
 
-# Versaes para Interaction (botaes) a **pablicas**
-async def _handle_entrada_ctx_public(interaction: discord.Interaction,
-                                     notes: Optional[str]):
-
+# Versões para Interaction (botões) — públicas
+async def _handle_entrada_ctx_public(interaction: discord.Interaction, notes: Optional[str]):
     class Dummy:
         author = interaction.user
-
         async def send(self, *args, **kwargs):
             if interaction.response.is_done():
                 await interaction.followup.send(*args, **kwargs)
             else:
                 await interaction.response.send_message(*args, **kwargs)
-
     await _handle_entrada(Dummy(), notes)
 
-
-async def _handle_saida_ctx_public(interaction: discord.Interaction,
-                                   notes: Optional[str]):
-
+async def _handle_saida_ctx_public(interaction: discord.Interaction, notes: Optional[str]):
     class Dummy:
         author = interaction.user
-
         async def send(self, *args, **kwargs):
             if interaction.response.is_done():
                 await interaction.followup.send(*args, **kwargs)
             else:
                 await interaction.response.send_message(*args, **kwargs)
-
     await _handle_saida(Dummy(), notes)
 
-
-async def _handle_pausa_ctx_public(interaction: discord.Interaction,
-                                   notes: Optional[str]):
-
+async def _handle_pausa_ctx_public(interaction: discord.Interaction, notes: Optional[str]):
     class Dummy:
         author = interaction.user
-
         async def send(self, *args, **kwargs):
             if interaction.response.is_done():
                 await interaction.followup.send(*args, **kwargs)
             else:
                 await interaction.response.send_message(*args, **kwargs)
-
     await _handle_pausa(Dummy(), notes)
 
-
-async def _handle_retorno_ctx_public(interaction: discord.Interaction,
-                                     notes: Optional[str]):
-
+async def _handle_retorno_ctx_public(interaction: discord.Interaction, notes: Optional[str]):
     class Dummy:
         author = interaction.user
-
         async def send(self, *args, **kwargs):
             if interaction.response.is_done():
                 await interaction.followup.send(*args, **kwargs)
             else:
                 await interaction.response.send_message(*args, **kwargs)
-
     await _handle_retorno(Dummy(), notes)
 
 
 # ======================================
-# Slash Commands (/) a pablicos
+# Slash Commands (/) — públicos
 # ======================================
 @bot.tree.command(name="entrada", description="Registrar entrada")
 async def slash_entrada(interaction: discord.Interaction):
     await _handle_entrada_ctx_public(interaction, notes=None)
 
-
-@bot.tree.command(name="saida", description="Registrar saada")
+@bot.tree.command(name="saida", description="Registrar saída")
 async def slash_saida(interaction: discord.Interaction):
     await _handle_saida_ctx_public(interaction, notes=None)
-
 
 @bot.tree.command(name="pausar", description="Pausar jornada atual")
 async def slash_pausar(interaction: discord.Interaction):
     await _handle_pausa_ctx_public(interaction, notes=None)
 
-
-@bot.tree.command(name="retomar", description="Retomar apas pausa")
+@bot.tree.command(name="retomar", description="Retomar após pausa")
 async def slash_retomar(interaction: discord.Interaction):
     await _handle_retorno_ctx_public(interaction, notes=None)
 
-
-@bot.tree.command(name="relatorio",
-                  description="Exibe seu relatario de ponto agrupado por dia.")
-@app_commands.describe(
-    dias="Namero de dias a incluir no relatario (padrao: 7)")
+@bot.tree.command(name="relatorio", description="Exibe seu relatório de ponto agrupado por dia.")
+@app_commands.describe(dias="Número de dias a incluir no relatório (padrão: 7)")
 async def relatorio_slash(interaction: discord.Interaction, dias: int = 7):
     async with aiosqlite.connect(DB_PATH) as db:
         entries = await _fetch_entries(db, interaction.user.id, dias)
 
     if not entries:
-        await interaction.response.send_message(embed=_make_warning_embed(
-            "Sem registros",
-            f"{interaction.user.mention} Nenhum registro encontrado nos altimos {dias} dias."
-        ),
-                                                ephemeral=False)
+        await interaction.response.send_message(
+            embed=_make_warning_embed("Sem registros", f"{interaction.user.mention} Nenhum registro encontrado nos últimos {dias} dias."),
+            ephemeral=False
+        )
         return
 
     fields, period_seconds = _build_daily_fields(entries)
-    embeds = _make_report_embeds(interaction.user, dias, fields,
-                                 period_seconds)
+    embeds = _make_report_embeds(interaction.user, dias, fields, period_seconds)
     await interaction.response.send_message(embeds=embeds, ephemeral=False)
 
-
-@bot.tree.command(name="painel",
-                  description="Postar painel de ponto com botaes")
+@bot.tree.command(name="painel", description="Postar painel de ponto com botões")
 async def slash_painel(interaction: discord.Interaction):
     view = TimePanel()
-    await interaction.response.send_message(
-        "?? **Painel de Ponto** a use os botaes abaixo:", view=view)
+    await interaction.response.send_message("🧭 **Painel de Ponto** — use os botões abaixo:", view=view)
 
 
 # ======================================
@@ -714,7 +650,7 @@ async def slash_painel(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f"[READY] Logado como {bot.user} (id={bot.user.id})")
-    # 1) Banco e View persistente (precisa custom_id nos botaes e timeout=None)
+    # 1) Banco e View persistente (precisa custom_id nos botões e timeout=None)
     try:
         await setup_database()
         bot.add_view(TimePanel())
@@ -722,42 +658,37 @@ async def on_ready():
     except Exception as e:
         print(f"[ERRO] Ao preparar database/View: {e}")
 
-    # 2) Sync dos slash por GUILD (aparece instantaneamente sa nesses servidores)
+    # 2) Sync dos slash por GUILD (aparece instantaneamente só nesses servidores)
     try:
         if GUILD_IDS:
             for gid in GUILD_IDS:
                 guild = discord.Object(id=gid)
                 synced_guild = await bot.tree.sync(guild=guild)
-                print(
-                    f"[SLASH] Sync GUILD {gid}: {len(synced_guild)} comandos.")
+                print(f"[SLASH] Sync GUILD {gid}: {len(synced_guild)} comandos.")
         else:
             print("[SLASH] Nenhum GUILD_ID configurado para sync imediato.")
     except Exception as e:
         print(f"[ERRO] Sync por guild: {e}")
 
-    # 3) Sync GLOBAL (necessario para aparecer na aba aComandosa do perfil do bot)
-    #    Observaaao: pode levar ata ~1h para propagar no Discord.
+    # 3) Sync GLOBAL (necessário para aparecer na aba “Comandos” do perfil do bot)
     try:
         synced_global = await bot.tree.sync()
-        print(
-            f"[SLASH] Sync GLOBAL: {len(synced_global)} comandos publicados.")
+        print(f"[SLASH] Sync GLOBAL: {len(synced_global)} comandos publicados.")
     except Exception as e:
         print(f"[ERRO] Sync global: {e}")
 
-    # 4) (Opcional) Presenaa/atividade do bot
+    # 4) (Opcional) Presença/atividade do bot
     try:
-        activity = discord.Activity(type=discord.ActivityType.watching,
-                                    name="/entrada a /saida a /relatorio")
-        await bot.change_presence(status=discord.Status.online,
-                                  activity=activity)
-        print("[READY] Presenaa atualizada.")
+        activity = discord.Activity(type=discord.ActivityType.watching, name="/entrada • /saida • /relatorio")
+        await bot.change_presence(status=discord.Status.online, activity=activity)
+        print("[READY] Presença atualizada.")
     except Exception as e:
-        print(f"[ERRO] Ao atualizar presenaa: {e}")
+        print(f"[ERRO] Ao atualizar presença: {e}")
 
 
 # ======================================
 # Run
 # ======================================
 if __name__ == "__main__":
-    keep_alive()
+    keep_alive()  # remova se for rodar em Render como Background Worker
     bot.run(os.environ['DISCORD_TOKEN'])
