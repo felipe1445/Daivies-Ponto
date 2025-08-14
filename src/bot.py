@@ -3,9 +3,13 @@ import os
 import discord
 from discord.ext import commands
 from discord import app_commands
+import threading
 from datetime import datetime, timezone, timedelta
 import aiosqlite
 from typing import List, Tuple, Optional
+from flask import Flask
+
+app = Flask(__name__)
 
 # ======================================
 # Config / Timezone
@@ -26,6 +30,13 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # ======================================
 DB_PATH = 'timesheet.db'
 
+@app.route("/", methods=["GET"])
+def home():
+    return "Bot rodando!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
 
 async def setup_database():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -557,4 +568,6 @@ async def on_ready():
 # Run
 # ======================================
 if __name__ == "__main__":
+    t = threading.Thread(target=run_flask, daemon=True)
+    t.start()
     bot.run(os.environ['DISCORD_TOKEN'])
